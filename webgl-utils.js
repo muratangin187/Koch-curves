@@ -114,13 +114,7 @@ var setupWebGL = function(canvas, opt_attribs) {
     return null;
   }
 
-    function logGLCall(functionName, args) {   
-           console.log("gl." + functionName + "(" + 
-                     WebGLDebugUtils.glFunctionArgsToString(functionName, args) + ")");   
-    } 
-
   var context = create3DContext(canvas, opt_attribs);
-  //context = WebGLDebugUtils.makeDebugContext(context, undefined, logGLCall);
   if (!context) {
     showLink(OTHER_PROBLEM);
   }

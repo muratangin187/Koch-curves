@@ -3,13 +3,13 @@
 
 <script id="vertex-shader" type="x-shader/x-vertex">
 attribute vec4 vPosition;
-attribute vec4 vColor;
+uniform vec4 fillColor;
 
 varying vec4 fColor;
 
 void main(){
     gl_Position = vPosition;
-    fColor = vColor;
+    fColor = fillColor;
 }
 </script>
 
@@ -31,7 +31,7 @@ main()
 <script type="text/javascript" src="./MV.js"></script>
 <script type="text/javascript" src="app.js"></script>
 
-<body>
+<body style="margin: 0px">
 <div>
 <canvas id="myCanvas" width="512" height="512">
 Oops ... your browser doesn't support the HTML5 canvas element
@@ -50,7 +50,7 @@ Oops ... your browser doesn't support the HTML5 canvas element
         <input type="color" id="fillColor" value="#aaaaaa">
         <label for="fillColor">Fill Color</label>
     </div>
-    <button id = "Button1">End Polygon</button>
+    <button id = "fillButton">Fill polygon</button>
 </div>
 </body>
 </html>
