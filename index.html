@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+attribute vec4 vPosition;
+attribute vec4 vColor;
+
+varying vec4 fColor;
+
+void main(){
+    gl_Position = vPosition;
+    fColor = vColor;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+
+precision mediump float;
+
+varying vec4 fColor;
+void
+main()
+{
+    gl_FragColor = fColor;
+}
+</script>
+
+<script src="webgl-debug.js"></script>
+<script type="text/javascript" src="./webgl-utils.js"></script>
+<script type="text/javascript" src="./initShaders.js"></script>
+<script type="text/javascript" src="./MV.js"></script>
+<script type="text/javascript" src="app.js"></script>
+
+<body>
+<div>
+<canvas id="myCanvas" width="512" height="512">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+</div>
+<div>
+    <div>
+        <input type="color" id="backgroundColor" value="#ffffff">
+        <label for="backgroundColor">Background Color</label>
+    </div>
+    <div>
+        <input type="color" id="lineColor" value="#333333">
+        <label for="lineColor">Line Color</label>
+    </div>
+    <div>
+        <input type="color" id="fillColor" value="#aaaaaa">
+        <label for="fillColor">Fill Color</label>
+    </div>
+    <button id = "Button1">End Polygon</button>
+</div>
+</body>
+</html>
