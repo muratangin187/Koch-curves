@@ -39,18 +39,26 @@ Oops ... your browser doesn't support the HTML5 canvas element
 </div>
 <div>
     <div>
-        <input type="color" id="backgroundColor" value="#ffffff">
+        <input type="color" id="backgroundColor" value="#333333">
         <label for="backgroundColor">Background Color</label>
     </div>
     <div>
-        <input type="color" id="lineColor" value="#333333">
-        <label for="lineColor">Line Color</label>
-    </div>
-    <div>
-        <input type="color" id="fillColor" value="#aaaaaa">
+        <input type="color" id="fillColor" value="#ff5757">
         <label for="fillColor">Fill Color</label>
     </div>
-    <button id = "fillButton">Fill polygon</button>
+    <div>
+        recursive steps  0 <input id="stepCount" type="range" min= "0" max= "6" step = "1" value = "0" /> 6
+    </div>
+    <div>
+        <input type="checkbox" id="fillCheck">
+        <label for="fillCheck">Fill Polygon</label>
+    </div>
+    <div>
+        <button id="startAlgorithm" disabled>Start Koch Algorithm</button>
+    </div>
+    <div>
+        <button id="resetCanvas" >Reset canvas</button>
+    </div>
 </div>
 </body>
 </html>
