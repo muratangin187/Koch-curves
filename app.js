@@ -3,9 +3,11 @@
 let canvas;
 let gl;
 // constant size for creating a buffer on gpu
-let maxNumVertices  = 200;
+let maxNumVertices  = 100000;
 // indices of current polygon
 let indices = [];
+// indices of calculated Koch curve after algorithm applied.
+let curveIndices = [];
 // First vertex position used to check lastly added point is close or not
 let firstVertexPos;
 // Last vertex position used to draw preview line when mouse moves
@@ -25,7 +27,7 @@ let vertexBufferId;
 let stepCount = 0;
 // check algorithm started or not
 let isStarted = false;
-
+let program;
 // used for pretty printing function names in webgl debug mode
 function logGLCall(functionName, args) {
     console.log("gl." + functionName + "(" +
@@ -33,7 +35,7 @@ function logGLCall(functionName, args) {
 }
 
 function initializeValues(){
-    maxNumVertices  = 200;
+    maxNumVertices  = 100000;
     indices = [];
     firstVertexPos = undefined;
     lastVertexPos = undefined;
@@ -61,6 +63,69 @@ function normalizeColor(rawColor){
     return vec4(redNormalized, greenNormalized, blueNormalized);
 }
 
+function createKochCurve(firstVertex, secondVertex, iteration){
+    if(iteration == 0){
+        curveIndices.push(firstVertex);
+    }else{
+        let vertex1 = firstVertex;
+        let vertex9 = secondVertex;
+        let rz = mat3(0, -1, 0, 1, 0, 0, 0, 0, 1);
+        let unitRightVector = scale(1/4, subtract(vertex9, vertex1));
+        let unitTopVector = mult(rz, vec3(unitRightVector[0], unitRightVector[1], 1));
+        // convert vec3 to vec2
+        unitTopVector = vec2(unitTopVector[0], unitTopVector[1]);
+        let unitBottomVector = negate(unitTopVector);
+
+        let vertex2 = add(vertex1, unitRightVector);
+        let vertex3 = add(vertex2, unitTopVector);
+        let vertex4 = add(vertex3, unitRightVector);
+        let vertex5 = add(vertex4, unitBottomVector);
+        let vertex6 = add(vertex5, unitBottomVector);
+        let vertex7 = add(vertex6, unitRightVector);
+        let vertex8 = add(vertex7, unitTopVector);
+
+        createKochCurve(vertex1, vertex2, iteration - 1);
+        createKochCurve(vertex2, vertex3, iteration - 1);
+        createKochCurve(vertex3, vertex4, iteration - 1);
+        createKochCurve(vertex4, vertex5, iteration - 1);
+        createKochCurve(vertex5, vertex6, iteration - 1);
+        createKochCurve(vertex6, vertex7, iteration - 1);
+        createKochCurve(vertex7, vertex8, iteration - 1);
+        createKochCurve(vertex8, vertex9, iteration - 1);
+    }
+}
+
+function initializeAlgorithm(){
+    createVertexBuffer(8 * maxNumVertices); // TODO
+    curveIndices = [];
+    for (let i = 0; i < indices.length-1; i++){
+        let firstVertex = indices[i];
+        let secondVertex = indices[i+1];
+        createKochCurve(firstVertex, secondVertex, stepCount);
+    }
+    curveIndices.push(indices[indices.length-1]);
+    gl.bindBuffer( gl.ARRAY_BUFFER, vertexBufferId );
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, flatten(curveIndices));
+}
+
+function createVertexBuffer(size){
+    if(vertexBufferId){
+        // if vertexBufferId exists, it means there is a buffer created already. Then remove it.
+        gl.deleteBuffer(vertexBufferId);
+    }else{
+        program = initShaders( gl, "vertex-shader", "fragment-shader" );
+        gl.useProgram( program );
+    }
+    vertexBufferId = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, vertexBufferId );
+    gl.bufferData( gl.ARRAY_BUFFER, size, gl.STATIC_DRAW );
+    let vPos = gl.getAttribLocation( program, "vPosition" );
+    gl.vertexAttribPointer( vPos, 2, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( vPos );
+    fillColorLocation = gl.getUniformLocation(program, "fillColor");
+    gl.uniform4fv(fillColorLocation, flatten(fillColor));
+}
+
 // initialize webgl and viewport then clear canvas and start render loop
 function initializeWebGl(){
     canvas = document.getElementById( "myCanvas" );
@@ -74,17 +139,8 @@ function initializeWebGl(){
     //
     //  Load shaders and initialize attribute buffers
     //
-    let program = initShaders( gl, "vertex-shader", "fragment-shader" );
-    gl.useProgram( program );
 
-    vertexBufferId = gl.createBuffer();
-    gl.bindBuffer( gl.ARRAY_BUFFER, vertexBufferId );
-    gl.bufferData( gl.ARRAY_BUFFER, 8*maxNumVertices, gl.STATIC_DRAW );
-    let vPos = gl.getAttribLocation( program, "vPosition" );
-    gl.vertexAttribPointer( vPos, 2, gl.FLOAT, false, 0, 0 );
-    gl.enableVertexAttribArray( vPos );
-    fillColorLocation = gl.getUniformLocation(program, "fillColor");
-    gl.uniform4fv(fillColorLocation, flatten(fillColor));
+    createVertexBuffer(8 * maxNumVertices);
 
     render();
 }
@@ -106,10 +162,12 @@ function initializeListeners(){
         if(isStarted){
             // stop algorithm
             isStarted = false;
+            initializeAlgorithm();
             document.getElementById("startAlgorithm").innerText = "Start Koch Algorithm";
         }else{
             // start algorithm
             isStarted = true;
+            initializeAlgorithm();
             document.getElementById("startAlgorithm").innerText = "Stop Koch Algorithm";
         }
     });
@@ -190,9 +248,13 @@ function render() {
         return;
     }
     gl.clear( gl.COLOR_BUFFER_BIT );
-    if(lastVertexPos && !donePolygon)
-        gl.drawArrays( fillPolygon ? gl.TRIANGLE_FAN : gl.LINE_STRIP, 0, indices.length+1);
-    else
-        gl.drawArrays( fillPolygon ? gl.TRIANGLE_FAN : gl.LINE_STRIP, 0, indices.length);
+    if(isStarted){
+        gl.drawArrays( fillPolygon ? gl.TRIANGLE_FAN : gl.LINE_STRIP, 0, curveIndices.length);
+    }else{
+        if(lastVertexPos && !donePolygon)
+            gl.drawArrays( fillPolygon ? gl.TRIANGLE_FAN : gl.LINE_STRIP, 0, indices.length+1);
+        else
+            gl.drawArrays( fillPolygon ? gl.TRIANGLE_FAN : gl.LINE_STRIP, 0, indices.length);
+    }
     window.requestAnimationFrame(render);
 }
