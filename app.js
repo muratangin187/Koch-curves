@@ -2,8 +2,6 @@
 
 let canvas;
 let gl;
-// constant size for creating a buffer on gpu
-let maxNumVertices  = 100000;
 // indices of current polygon
 let indices = [];
 // indices of calculated Koch curve after algorithm applied.
@@ -26,7 +24,6 @@ let vertexBufferId;
 // step count for recursive Koch algorithm
 let stepCount = 0;
 // check algorithm started or not
-let isStarted = false;
 let program;
 // used for pretty printing function names in webgl debug mode
 function logGLCall(functionName, args) {
@@ -35,8 +32,8 @@ function logGLCall(functionName, args) {
 }
 
 function initializeValues(){
-    maxNumVertices  = 100000;
     indices = [];
+    curveIndices = [];
     firstVertexPos = undefined;
     lastVertexPos = undefined;
     donePolygon = false;
@@ -46,7 +43,6 @@ function initializeValues(){
     backgroundColor = vec4(0.13, 0.13, 0.13, 1.0);
     vertexBufferId = undefined;
     stepCount = 0;
-    isStarted = false;
 }
 
 // helper function converts a hex color input(ex #ff0f2f) to a vec4 with r,g,b,1 values
@@ -95,8 +91,34 @@ function createKochCurve(firstVertex, secondVertex, iteration){
     }
 }
 
+function fadeOut(callback){
+    let timerOut = setInterval(()=>{
+        if(fillColor[3] <= 0){
+            fillColor[3] = 0.0;
+            gl.uniform4fv(fillColorLocation, flatten(fillColor));
+            callback();
+            clearInterval(timerOut);
+        }else{
+            fillColor[3] = fillColor[3] - 0.01;
+            gl.uniform4fv(fillColorLocation, flatten(fillColor));
+        }
+    }, 50);
+}
+
+function fadeIn(callback){
+    let timerIn = setInterval(()=>{
+        if(fillColor[3] >= 1){
+            fillColor[3] = 1.0;
+            gl.uniform4fv(fillColorLocation, flatten(fillColor));
+            callback();
+            clearInterval(timerIn);
+        }else{
+            fillColor[3] = fillColor[3] + 0.01;
+            gl.uniform4fv(fillColorLocation, flatten(fillColor));
+        }
+    }, 50);
+}
 function initializeAlgorithm(){
-    createVertexBuffer(8 * maxNumVertices); // TODO
     curveIndices = [];
     for (let i = 0; i < indices.length-1; i++){
         let firstVertex = indices[i];
@@ -104,6 +126,7 @@ function initializeAlgorithm(){
         createKochCurve(firstVertex, secondVertex, stepCount);
     }
     curveIndices.push(indices[indices.length-1]);
+    createVertexBuffer(8 * curveIndices.length); // TODO
     gl.bindBuffer( gl.ARRAY_BUFFER, vertexBufferId );
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, flatten(curveIndices));
 }
@@ -140,13 +163,66 @@ function initializeWebGl(){
     //  Load shaders and initialize attribute buffers
     //
 
-    createVertexBuffer(8 * maxNumVertices);
+    createVertexBuffer(8 * 100);
 
     render();
 }
 
+function importCanvas(jsonData) {
+    initializeValues();
+    //document.getElementById("fillColor").value = "#ff5757";
+    //document.getElementById("backgroundColor").value = "#333333";
+    document.getElementById("stepCount").value = jsonData.stepCount;
+    stepCount = jsonData.stepCount;
+    fillColor = jsonData.fillColor;
+    backgroundColor = jsonData.backgroundColor;
+    indices = jsonData.indices;
+    initializeWebGl();
+    sendIndicesToBuffer();
+    initializeAlgorithm();
+}
+
+function sendIndicesToBuffer(){
+    for (let i = 0; i < indices.length; i++){
+        gl.bindBuffer( gl.ARRAY_BUFFER, vertexBufferId );
+        gl.bufferSubData(gl.ARRAY_BUFFER, 8*i, flatten(indices[i]));
+    }
+}
+
 // initialize listeners for ui elements and canvas actions(mouse, keyboard, etc.)
 function initializeListeners(){
+    document.getElementById("importCanvas").addEventListener("change", (event)=>{
+        let files = document.getElementById('importCanvas').files;
+        if (files.length <= 0) return;
+
+        let fileReader = new FileReader();
+
+        fileReader.onload = e => {
+            // we got json data from file
+            let jsonData = JSON.parse(e.target.result);
+            importCanvas(jsonData);
+        }
+
+        fileReader.readAsText(files.item(0));
+    });
+
+    document.getElementById("exportCanvas").addEventListener("click", (event)=>{
+        const originalData = {
+            backgroundColor: backgroundColor,
+            fillColor: fillColor,
+            stepCount: stepCount,
+            indices: indices
+        };
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(originalData, null, 2)], {
+            type: "application/json"
+        }));
+        a.setAttribute("download", "canvas.json");
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    });
+
     document.getElementById("fillCheck").addEventListener("change", (event)=>{
         fillPolygon = event.target.checked;
     });
@@ -155,21 +231,13 @@ function initializeListeners(){
         initializeValues();
         document.getElementById("fillColor").value = "#ff5757";
         document.getElementById("backgroundColor").value = "#333333";
+        document.getElementById("stepCount").value = stepCount;
         initializeWebGl();
     });
 
     document.getElementById("startAlgorithm").addEventListener("click", (event)=>{
-        if(isStarted){
-            // stop algorithm
-            isStarted = false;
-            initializeAlgorithm();
-            document.getElementById("startAlgorithm").innerText = "Start Koch Algorithm";
-        }else{
-            // start algorithm
-            isStarted = true;
-            initializeAlgorithm();
-            document.getElementById("startAlgorithm").innerText = "Stop Koch Algorithm";
-        }
+        // start algorithm
+        initializeAlgorithm();
     });
 
     document.getElementById("fillColor").addEventListener("input",event => {
@@ -201,7 +269,6 @@ function initializeListeners(){
                 // so close, joins them
                 resultVertex = firstVertexPos;
                 donePolygon = true;
-                document.getElementById("startAlgorithm").removeAttribute("disabled");
             }
         }
 
@@ -248,7 +315,7 @@ function render() {
         return;
     }
     gl.clear( gl.COLOR_BUFFER_BIT );
-    if(isStarted){
+    if(curveIndices.length > 0){
         gl.drawArrays( fillPolygon ? gl.TRIANGLE_FAN : gl.LINE_STRIP, 0, curveIndices.length);
     }else{
         if(lastVertexPos && !donePolygon)
