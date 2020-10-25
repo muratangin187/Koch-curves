@@ -1,7 +1,9 @@
 "use strict";
 
+// variables used in webgl processes
 let canvas;
 let gl;
+let program;
 // indices of current polygon
 let indices = [];
 // indices of calculated Koch curve after algorithm applied.
@@ -12,8 +14,6 @@ let firstVertexPos;
 let lastVertexPos;
 // boolean variable disable drawing after connect starting and end point of a polygon
 let donePolygon = false;
-// boolean variable controls whether fill polygon or just draw lines
-let fillPolygon = false;
 // uniform fillColor value and location variables
 let fillColor = vec4(1.0, 0.34, 0.34, 1.0);
 let fillColorLocation;
@@ -23,21 +23,19 @@ let backgroundColor = vec4(0.13, 0.13, 0.13, 1.0);
 let vertexBufferId;
 // step count for recursive Koch algorithm
 let stepCount = 0;
-// check algorithm started or not
-let program;
 // used for pretty printing function names in webgl debug mode
 function logGLCall(functionName, args) {
     console.log("gl." + functionName + "(" +
         WebGLDebugUtils.glFunctionArgsToString(functionName, args) + ")");
 }
 
+// initialize variables at the beginning of the program or after importing a new canvas
 function initializeValues(){
     indices = [];
     curveIndices = [];
     firstVertexPos = undefined;
     lastVertexPos = undefined;
     donePolygon = false;
-    fillPolygon = false;
     fillColor = vec4(1.0, 0.34, 0.34, 1.0);
     fillColorLocation = undefined;
     backgroundColor = vec4(0.13, 0.13, 0.13, 1.0);
@@ -56,9 +54,26 @@ function normalizeColor(rawColor){
     let redNormalized = redDec / 255;
     let greenNormalized = greenDec / 255;
     let blueNormalized = blueDec / 255;
-    return vec4(redNormalized, greenNormalized, blueNormalized);
+    return vec4(redNormalized, greenNormalized, blueNormalized, 1);
 }
 
+// helper function converts a vec4 with r,g,b,1 values to a hex color input(ex #ff0f2f)
+function toHex(vectorColor){
+    let redHex = (vectorColor[0] * 255).toString(16);
+    let greenHex = (vectorColor[1] * 255).toString(16);
+    let blueHex = (vectorColor[2] * 255).toString(16);
+    if(redHex.length < 2)
+        redHex = "0" + redHex;
+    if(greenHex.length < 2)
+        greenHex = "0" + greenHex;
+    if(blueHex.length < 2)
+        blueHex= "0" + blueHex;
+    let result = "#" + redHex + greenHex + blueHex;
+    return result;
+}
+
+// calculate new curves(new lines) according to start and end vertex of a line and
+// push them into an array called curveIndices
 function createKochCurve(firstVertex, secondVertex, iteration){
     if(iteration == 0){
         curveIndices.push(firstVertex);
@@ -91,33 +106,8 @@ function createKochCurve(firstVertex, secondVertex, iteration){
     }
 }
 
-function fadeOut(callback){
-    let timerOut = setInterval(()=>{
-        if(fillColor[3] <= 0){
-            fillColor[3] = 0.0;
-            gl.uniform4fv(fillColorLocation, flatten(fillColor));
-            callback();
-            clearInterval(timerOut);
-        }else{
-            fillColor[3] = fillColor[3] - 0.01;
-            gl.uniform4fv(fillColorLocation, flatten(fillColor));
-        }
-    }, 50);
-}
-
-function fadeIn(callback){
-    let timerIn = setInterval(()=>{
-        if(fillColor[3] >= 1){
-            fillColor[3] = 1.0;
-            gl.uniform4fv(fillColorLocation, flatten(fillColor));
-            callback();
-            clearInterval(timerIn);
-        }else{
-            fillColor[3] = fillColor[3] + 0.01;
-            gl.uniform4fv(fillColorLocation, flatten(fillColor));
-        }
-    }, 50);
-}
+// empty result indice array(curveIndices) and iterate for every edge of polygon, send
+// these edges to createKochCurve algorithm. At the end, send result vertices to gpu buffer
 function initializeAlgorithm(){
     curveIndices = [];
     for (let i = 0; i < indices.length-1; i++){
@@ -131,6 +121,8 @@ function initializeAlgorithm(){
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, flatten(curveIndices));
 }
 
+// if there is an vertex buffer created already delete it, create a new webgl program, create a vertex
+// buffer and use it on new program, create location for fillColor uniform on the new program
 function createVertexBuffer(size){
     if(vertexBufferId){
         // if vertexBufferId exists, it means there is a buffer created already. Then remove it.
@@ -152,6 +144,8 @@ function createVertexBuffer(size){
 // initialize webgl and viewport then clear canvas and start render loop
 function initializeWebGl(){
     canvas = document.getElementById( "myCanvas" );
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
     gl = WebGLUtils.setupWebGL( canvas );
     // for enable debug
     //gl = WebGLDebugUtils.makeDebugContext(gl, undefined, logGLCall);
@@ -159,20 +153,24 @@ function initializeWebGl(){
     gl.viewport( 0, 0, canvas.width, canvas.height );
     gl.clearColor(flatten(backgroundColor)[0], flatten(backgroundColor)[1], flatten(backgroundColor)[2], flatten(backgroundColor)[3]);
     gl.clear( gl.COLOR_BUFFER_BIT );
-    //
     //  Load shaders and initialize attribute buffers
-    //
-
     createVertexBuffer(8 * 100);
-
+    // enter the render loop
     render();
 }
 
+// Import canvas function, reset every variable and assign new values comes from json data
+// Start koch curves algorithm
 function importCanvas(jsonData) {
     initializeValues();
+    donePolygon = true;
     //document.getElementById("fillColor").value = "#ff5757";
     //document.getElementById("backgroundColor").value = "#333333";
     document.getElementById("stepCount").value = jsonData.stepCount;
+    document.getElementById("stepCountLabel").innerText = jsonData.stepCount;
+    // update colors according to imported canvas
+    document.getElementById("backgroundColor").value = toHex(jsonData.backgroundColor);
+    document.getElementById("fillColor").value = toHex(jsonData.fillColor);
     stepCount = jsonData.stepCount;
     fillColor = jsonData.fillColor;
     backgroundColor = jsonData.backgroundColor;
@@ -182,6 +180,7 @@ function importCanvas(jsonData) {
     initializeAlgorithm();
 }
 
+// helper function to send indices to vertex buffer
 function sendIndicesToBuffer(){
     for (let i = 0; i < indices.length; i++){
         gl.bindBuffer( gl.ARRAY_BUFFER, vertexBufferId );
@@ -191,6 +190,7 @@ function sendIndicesToBuffer(){
 
 // initialize listeners for ui elements and canvas actions(mouse, keyboard, etc.)
 function initializeListeners(){
+    // assign importCanvas function to button, opens a file picker component and call importCanvas
     document.getElementById("importCanvas").addEventListener("change", (event)=>{
         let files = document.getElementById('importCanvas').files;
         if (files.length <= 0) return;
@@ -206,6 +206,9 @@ function initializeListeners(){
         fileReader.readAsText(files.item(0));
     });
 
+    // assign export canvas button functions, get current needed values such as background, fillColor,
+    // stepCount, indices array for polygon and create a json object with them. Create a link button and click on it
+    // in order to start download process in frontend
     document.getElementById("exportCanvas").addEventListener("click", (event)=>{
         const originalData = {
             backgroundColor: backgroundColor,
@@ -223,38 +226,41 @@ function initializeListeners(){
         document.body.removeChild(a);
     });
 
-    document.getElementById("fillCheck").addEventListener("change", (event)=>{
-        fillPolygon = event.target.checked;
-    });
-
+    // reset values of canvas and webgl
     document.getElementById("resetCanvas").addEventListener("click", (event)=>{
         initializeValues();
         document.getElementById("fillColor").value = "#ff5757";
         document.getElementById("backgroundColor").value = "#333333";
         document.getElementById("stepCount").value = stepCount;
+        document.getElementById("stepCountLabel").innerText = "0";
         initializeWebGl();
     });
 
+    // start algorithm
     document.getElementById("startAlgorithm").addEventListener("click", (event)=>{
-        // start algorithm
         initializeAlgorithm();
     });
 
+    // change color of line, fillColor
     document.getElementById("fillColor").addEventListener("input",event => {
         fillColor = normalizeColor(event.target.value);
         gl.uniform4fv(fillColorLocation, flatten(fillColor));
     });
 
+    // change background color
     document.getElementById("backgroundColor").addEventListener("input",event => {
         backgroundColor = normalizeColor(event.target.value);
         gl.clearColor(flatten(backgroundColor)[0], flatten(backgroundColor)[1], flatten(backgroundColor)[2], flatten(backgroundColor)[3]);
         gl.clear( gl.COLOR_BUFFER_BIT );
     });
 
+    // change step count for algorithm, 1-6
     document.getElementById("stepCount").onchange = event => {
         stepCount = parseInt(event.target.value);
+        document.getElementById("stepCountLabel").innerText = stepCount;
     };
 
+    // canvas mousedown event, if the polygon drawing is not done, add a new vertex to vertex buffer
     canvas.addEventListener("mousedown", function(event){
         if(donePolygon) return;
         let clipCoordX = 2 * event.clientX / canvas.width - 1;
@@ -286,6 +292,7 @@ function initializeListeners(){
         gl.bufferSubData(gl.ARRAY_BUFFER, 8*(indices.length), flatten(resultVertex));
     } );
 
+    // in order to create a preview of newly added line, in the mousemove event of canvas create a line.
     canvas.addEventListener("mousemove", function(event){
         if(donePolygon) return;
         if(!lastVertexPos) return;
@@ -301,7 +308,7 @@ function initializeListeners(){
     });
 }
 
-// starting point of application, fired after loading of page finished
+// starting point of application
 window.onload = function init() {
     initializeValues();
     initializeWebGl();
@@ -316,12 +323,12 @@ function render() {
     }
     gl.clear( gl.COLOR_BUFFER_BIT );
     if(curveIndices.length > 0){
-        gl.drawArrays( fillPolygon ? gl.TRIANGLE_FAN : gl.LINE_STRIP, 0, curveIndices.length);
+        gl.drawArrays( gl.LINE_STRIP, 0, curveIndices.length);
     }else{
         if(lastVertexPos && !donePolygon)
-            gl.drawArrays( fillPolygon ? gl.TRIANGLE_FAN : gl.LINE_STRIP, 0, indices.length+1);
+            gl.drawArrays( gl.LINE_STRIP, 0, indices.length+1);
         else
-            gl.drawArrays( fillPolygon ? gl.TRIANGLE_FAN : gl.LINE_STRIP, 0, indices.length);
+            gl.drawArrays( gl.LINE_STRIP, 0, indices.length);
     }
     window.requestAnimationFrame(render);
 }

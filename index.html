@@ -25,19 +25,19 @@ main()
 }
 </script>
 
+<link rel="stylesheet" href="style.css">
 <script src="webgl-debug.js"></script>
 <script type="text/javascript" src="./webgl-utils.js"></script>
 <script type="text/javascript" src="./initShaders.js"></script>
 <script type="text/javascript" src="./MV.js"></script>
 <script type="text/javascript" src="app.js"></script>
-
-<body style="margin: 0px">
+<body>
 <div>
-<canvas id="myCanvas" width="512" height="512">
+<canvas id="myCanvas">
 Oops ... your browser doesn't support the HTML5 canvas element
 </canvas>
 </div>
-<div>
+<div id="myMenu">
     <div>
         <input type="color" id="backgroundColor" value="#333333">
         <label for="backgroundColor">Background Color</label>
@@ -47,7 +47,7 @@ Oops ... your browser doesn't support the HTML5 canvas element
         <label for="fillColor">Fill Color</label>
     </div>
     <div>
-        recursive steps  0 <input id="stepCount" type="range" min= "0" max= "6" step = "1" value = "0" /> 6
+        Step count  <span id="stepCountLabel">0</span><input id="stepCount" type="range" min= "0" max= "6" step = "1" value = "0" />
     </div>
     <div>
         <input type="checkbox" id="fillCheck">
@@ -61,6 +61,8 @@ Oops ... your browser doesn't support the HTML5 canvas element
     </div>
     <div>
         <input type="file" id="importCanvas" value="Import" accept="application/json" />
+    </div>
+    <div>
         <button id="exportCanvas">Export current canvas</button>
     </div>
 </div>

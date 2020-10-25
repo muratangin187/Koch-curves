@@ -1,0 +1,24 @@
+body{
+    margin: 0px;
+}
+
+#myCanvas{
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 80%;
+    height: 100%;
+}
+
+#myMenu{
+    position: fixed;
+    padding: 10px;
+    left: 80%;
+    top: 0;
+    width: 80%;
+    height: 100%;
+}
+
+#stepCountLabel{
+    font-weight: bold;
+}
