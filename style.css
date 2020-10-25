@@ -19,6 +19,20 @@ body{
     height: 100%;
 }
 
+#myMenu div{
+    margin: 20px 20px 20px 0px;
+}
+
+#myMenu div label{
+    display: block;
+    margin: 0px 40px 40px 0px;
+}
+
+#myMenu div button{
+    width: 20%;
+    height: 50px;
+}
+
 #stepCountLabel{
     font-weight: bold;
 }
