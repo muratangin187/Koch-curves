@@ -17,6 +17,7 @@ body{
     top: 0;
     width: 80%;
     height: 100%;
+    overflow: scroll;
 }
 
 #myMenu div{
@@ -33,6 +34,25 @@ body{
     height: 50px;
 }
 
+#myMenu div input[type=file]{
+    display: none;
+}
+
+#myMenu #fileButton{
+    display: block;
+    width: 20%;
+    height: 50px;
+}
+
 #stepCountLabel{
     font-weight: bold;
+}
+
+#myMenu #info{
+    width: 20%;
+} 
+
+#myMenu #info span{
+    font-weight: bold;
+    margin-righT: 5px;
 }

@@ -57,10 +57,18 @@ Oops ... your browser doesn't support the HTML5 canvas element
         <button id="resetCanvas" >Reset canvas</button>
     </div>
     <div>
+        <button id="fileButton" onclick="document.getElementById('importCanvas').click()">Import canvas</button>
         <input type="file" id="importCanvas" value="Import" accept="application/json" />
     </div>
     <div>
         <button id="exportCanvas">Export current canvas</button>
+    </div>
+    <div id="info">
+        <p><span>Background Color: </span> Change background color of canvas when you select a color.</p>
+        <p><span>Line Color: </span> Change line color of polygon drawn on canvas when you select a color.</p>
+        <p><span>Step count: </span> You can determine how much iteration must work on Koch algorithm which divides lines into sublines.</p>
+        <p><span>Import Canvas: </span> You can import a canvas via a json file you already exported from another canvas. </p>
+        <p><span>Export Canvas: </span> You can export the canvas you currently working on via a json file it will automatically downloaded when you click export button. </p>
     </div>
 </div>
 </body>
