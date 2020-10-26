@@ -9,4 +9,3 @@ I didnt use any external library of framework. I used plain HTML5, CSS3, and jav
 
 # Author
 Name: Murat ANGIN
-Student number: 21702962
